@@ -8,7 +8,7 @@ import Image from "next/image";
 
 export default () => {
     const pathName = usePathname();
-    const listPath = pathName.split('/cn')[0];
+    const listPath = pathName.split('/af')[0] + '/af';
     const elementList = useFetchData(listPath + '/api/getList');
     const [showOverlay, setShowOverlay] = useState(false);
 

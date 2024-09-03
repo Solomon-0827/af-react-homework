@@ -10,6 +10,7 @@
     "test": "export NODE_ENV=test && next --turbo"
   },
   "dependencies": {
+    "@repo/fetch-data": "*",
     "@repo/local": "*",
     "@repo/ui": "*",
     "bootstrap": "^5.3.3",

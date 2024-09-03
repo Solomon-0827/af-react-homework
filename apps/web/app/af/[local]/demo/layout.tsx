@@ -7,7 +7,7 @@ import { ThemeContext } from './context';
 
 const getAllLinks = () => {
     const currentPath = usePathname();
-    const basePath = currentPath.endsWith("/demo") ? currentPath : currentPath.split('/').slice(0, -1).join('/');
+    const basePath = currentPath.endsWith("/demo") ? currentPath : currentPath.split('/demo')[0] + '/demo';
     return [
         {
             name: "To A",
