@@ -1,1 +1,0 @@
-export default () => <div>b1 page</div>
