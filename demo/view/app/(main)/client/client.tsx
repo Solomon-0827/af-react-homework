@@ -17,7 +17,7 @@ const AppendInput = memo(({ text }: { text: string }) => {
 export const InputBox = () => {
     const { InputEle, delayContent } = inputClient();
     const InputClient = () => {
-        const vainEle = new Array(5).fill('');
+        const vainEle = new Array(10000).fill('');
         return (
             <div>
                 {InputEle}
