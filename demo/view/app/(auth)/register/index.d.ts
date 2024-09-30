@@ -1,4 +1,4 @@
-declare type RegisterResponseCode = 0 | 1;
+declare type RegisterResponseCode = 0 | 1 | 2;
 
 declare type RegisterResponse = {
     code: RegisterResponseCode,

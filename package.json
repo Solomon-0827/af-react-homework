@@ -22,5 +22,9 @@
     "apps/*",
     "packages/*",
     "demo/*"
-  ]
+  ],
+  "dependencies": {
+    "framer-motion": "^11.8.0",
+    "react-geolocated": "^4.2.0"
+  }
 }

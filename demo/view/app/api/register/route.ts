@@ -1,6 +1,6 @@
-// app/api/register/route.ts
+
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../prisma/prisma';
+import { prisma } from '@/prisma/prisma';
 
 function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -8,35 +8,41 @@ function delay(ms: number) {
 
 export async function POST(request: Request) {
   try {
-    await delay(1500);
-    const { username, password } = await request.json();
+    const { username, password, source } = await request.json();
+    if (source === "regular") await delay(1500);
 
-    if (!username || !password) {
+    if (!username) {
       return NextResponse.json(
         { error: 'Username and password are required.' },
         { status: 400 }
       );
     }
 
-    // 检查用户名是否已存在
     const existingUser = await prisma.user.findFirst({
       where: { username },
     });
 
     if (existingUser) {
+      const password = existingUser.password || '';
       return NextResponse.json(
-        { error: '用户已存在导致注册失败，请联系管理员。' },
-        { status: 400 }
+        { error: '用户已存在' },
+        { status: password.length > 0 ? 412 : 413 }
       );
     }
 
-    // 创建新用户
     const newUser = await prisma.user.create({
       data: {
         username,
         password,
       },
     });
+
+    if (source === "github") {
+      return NextResponse.json(
+        { error: 'github用户已注册' },
+        { status: 413 }
+      );
+    }
 
     return NextResponse.json({ message: 'User registered successfully', user: newUser });
   } catch (error) {

@@ -1,51 +1,93 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { action } from './action'
+import { createToken, registerNewUser } from './action'
+import { useSession } from 'next-auth/react';
+import { sign } from 'jsonwebtoken';
+import { verifyToken } from '../login/action';
 
 const Register = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [countdown, setCountdown] = useState(3);
+  const [isHovered, setIsHovered] = useState(false);
   const router = useRouter();
+  const [response, handleRegister, isPending] = useActionState(async (_: RegisterResponse | null, formdata: FormData) => await registerNewUser(formdata, status), null);
+  const {code, msg, jwt} = response ?? {};
+  const {data, status} = useSession();
 
-  const [response, handleRegister, isPending] = useActionState(async (_: LoginResponse | null, formdata: FormData) => await action(formdata), null);
+  useEffect(() => {
+    const checkToken = async () => {
+      try {
+        const token = localStorage.getItem("token") || '';
+        if (await verifyToken(token)) router.push("/");
+        if (code === 1 && status === "unauthenticated") {
+          const interval = setInterval(() => {
+            setCountdown((prev) => {
+              if (prev <= 1) {
+                clearInterval(interval);
+                router.push('/login');
+                return 0;
+              }
+              return prev - 1;
+            });
+          }, 1000);
+          return () => clearInterval(interval);
+        } else if (code === 1 && status === "authenticated") {
+          localStorage.setItem('token', jwt ?? '');
+          router.push("/");
+        }
+    
+        if (!code && status === "authenticated") {
+          setUsername(data.user?.name || "");
+        } 
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    checkToken();
+  }, [code, router]);
 
-  // 禁用注册按钮的条件
-  const isButtonDisabled = username.trim() === '' || password.length < 6 || loading;
+  
+  const isButtonDisabled = username.trim() === '' || password.length < 6 || isPending;
+
+  const skipRegister = () => {
+    const token = createToken(username);
+    localStorage.setItem('token', token);
+    router.push("/");
+  }
 
   return (
     <div style={styles.container}>
       <div style={styles.imageContainer}>
-        {/* 加载图片，确保路径和大小 */}
         <Image src="/next.svg" alt="Next.js Logo" width={100} height={100} style={styles.image} />
       </div>
       <div style={styles.form}>
-        {error && <div style={styles.errorMessage}>{error}</div>}
-        {success ? (
+        {code === 0 && <div style={styles.errorMessage}>{msg}</div>}
+        {code === 1 && status === "unauthenticated"? (
           <div style={styles.successMessage}>
             注册成功，{countdown}秒后自动跳转到登录页
           </div>
         ) : (
           <>
+          <form action={handleRegister}>
             <div style={styles.inputGroup}>
               <label style={styles.label}>username</label>
               <input
                 type="text"
+                id='username'
+                name='username'
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                style={styles.input} // username 保持普通样式
+                style={styles.input}
                 placeholder="请输入用户名"
               />
             </div>
             <div style={styles.inputGroup}>
               <label
-                style={password.length < 6 ? styles.errorLabel : styles.label} // 仅 password 变色
+                style={password.length < 6 ? styles.errorLabel : styles.label}
               >
                 password
               </label>
@@ -53,22 +95,33 @@ const Register = () => {
                 <input
                   type="password"
                   value={password}
+                  id='password'
+                  name='password'
                   onChange={(e) => setPassword(e.target.value)}
-                  style={password.length < 6 ? styles.errorInput : styles.input} // 仅 password 输入框变色
+                  style={password.length < 6 ? styles.errorInput : styles.input}
                   placeholder="请输入至少6位密码"
                 />
                 {password.length < 6 && (
-                  <div style={styles.passwordError}>密码不能小于6位</div> // 提示文字在 password 输入框下方
+                  <div style={styles.passwordError}>密码不能小于6位</div>
                 )}
               </div>
             </div>
             <button
-              onClick={handleRegister}
-              disabled={isButtonDisabled} // 根据条件禁用按钮
+              type='submit'
+              disabled={isButtonDisabled}
               style={isButtonDisabled ? styles.buttonDisabled : styles.button}
             >
-              {loading ? 'loading...' : '注册'}
+              {isPending ? 'Loading...' : '注册'}
             </button>
+            {status === "authenticated" && <div
+                style={styles.registerLink}
+                onMouseEnter={() => setIsHovered(true)}  
+                onMouseLeave={() => setIsHovered(false)}
+                onClick={skipRegister}
+            >
+                跳过注册
+            </div>}
+          </form>
           </>
         )}
       </div>
@@ -88,10 +141,10 @@ const styles = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: '80px', // 调整与输入框之间的间距
+    marginRight: '80px', 
   },
   image: {
-    width: '100%', // 图片宽度为容器宽度
+    width: '100%', 
   },
   form: {
     padding: '30px',
@@ -99,22 +152,22 @@ const styles = {
     borderRadius: '10px',
     boxShadow: '0px 0px 10px rgba(0,0,0,0.1)',
     textAlign: 'left' as 'left',
-    width: '350px', // 固定输入框宽度
+    width: '350px', 
   },
   inputGroup: {
     marginBottom: '20px',
-    display: 'flex', // 使用 flex 布局保持 label 和 input 水平对齐
-    alignItems: 'center', // 垂直居中对齐
+    display: 'flex', 
+    alignItems: 'center', 
   },
   passwordContainer: {
-    flex: 1, // 填满剩余宽度
+    flex: 1, 
     display: 'flex',
-    flexDirection: 'column', // 使输入框和错误信息纵向排列
+    flexDirection: 'column', 
   },
   label: {
-    fontSize: '18px', // 增大标签文字大小
-    marginRight: '10px', // 与输入框保持间距
-    width: '100px', // 固定宽度
+    fontSize: '18px', 
+    marginRight: '10px', 
+    width: '100px', 
   },
   input: {
     padding: '10px',
@@ -128,15 +181,15 @@ const styles = {
     fontSize: '18px',
     marginRight: '10px',
     width: '100px',
-    color: 'red', // 改变标签颜色为红色
+    color: 'red', 
   },
   errorInput: {
     padding: '10px',
-    border: '1px solid red', // 改变输入框边框颜色为红色
+    border: '1px solid red', 
     borderRadius: '5px',
     outline: 'none',
     fontSize: '16px',
-    backgroundColor: '#ffe6e6', // 改变背景颜色为浅红色
+    backgroundColor: '#ffe6e6', 
     boxSizing: 'border-box',
   },
   passwordError: {
@@ -172,7 +225,17 @@ const styles = {
   successMessage: {
     color: 'green',
     fontSize: '16px',
-    whiteSpace: 'nowrap', // 保持文字在一行
+    whiteSpace: 'nowrap', 
+  },
+  registerLink: {
+    display: 'block',
+    textAlign: 'right',
+    marginTop: '10px',
+    color: '#1f7a8c', 
+    textDecoration: 'none',
+    fontSize: '14px',
+    cursor: 'pointer', 
+    transition: 'color 0.3s', 
   },
 };
 
